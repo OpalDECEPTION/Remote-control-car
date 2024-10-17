@@ -1,0 +1,95 @@
+#include <RH_RF69.h>
+
+#define RFM69_RST 2
+#define RFM69_INT 3
+#define RFM69_CS 4
+#define B1IN 5
+#define B2IN 6
+#define A1IN 7
+#define A2IN 8
+
+#define RF69_FREQ 915.0
+
+RH_RF69 rf69(RFM69_CS, RFM69_INT);
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(RFM69_RST, OUTPUT);
+  digitalWrite(RFM69_RST, LOW);
+
+  digitalWrite(RFM69_RST, HIGH);  //manual reset
+  delay(10);
+  digitalWrite(RFM69_RST, LOW);
+  delay(10);
+
+  if (!rf69.init()) {
+    Serial.println("RFM69 radio init failed");
+    while (1)
+      ;
+  }
+
+  Serial.println("RFM69 radio init OK!");
+
+  if (!rf69.setFrequency(RF69_FREQ)) {
+    Serial.println("setFrequency failed");
+  }
+
+  uint8_t key[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+                    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+  rf69.setEncryptionKey(key);
+
+  Serial.print("RFM69 radio @");
+  Serial.print((int)RF69_FREQ);
+  Serial.println(" MHz");
+}
+
+void loop() {
+  if (rf69.available()) {
+
+    uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+
+    if (rf69.recv(buf, &len)) {
+
+      if (!len) return;
+      buf[len] = 0;
+      char Data = buf[1];
+
+      if (Data == 'F') {  //moves car forewards if first button is pushed
+        digitalWrite(B1IN, HIGH);
+        digitalWrite(B2IN, LOW);
+        digitalWrite(A1IN, HIGH);
+        digitalWrite(A2IN, LOW);
+        Serial.println("F");
+      }
+      if (Data == 'B') {  //moves car backwards if second button is pushed
+        digitalWrite(B1IN, LOW);
+        digitalWrite(B2IN, HIGH);
+        digitalWrite(A1IN, LOW);
+        digitalWrite(A2IN, HIGH);
+        Serial.println("B");
+      }
+      if (Data == 'R') {  //moves car clockwise if third button is pushed
+        digitalWrite(B1IN, HIGH);
+        digitalWrite(B2IN, LOW);
+        digitalWrite(A1IN, LOW);
+        digitalWrite(A2IN, HIGH);
+        Serial.println("R");
+      }
+      if (Data == 'L') {  //moves car counterclockwise if fourth button is pushed
+        digitalWrite(B1IN, LOW);
+        digitalWrite(B2IN, HIGH);
+        digitalWrite(A1IN, HIGH);
+        digitalWrite(A2IN, LOW);
+        Serial.println("L");
+      }
+      if (Data == 'X') {
+        digitalWrite(B1IN, LOW);
+        digitalWrite(B2IN, LOW);
+        digitalWrite(A1IN, LOW);
+        digitalWrite(A2IN, LOW);
+      }
+    }
+  }
+}
